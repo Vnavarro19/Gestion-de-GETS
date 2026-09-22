@@ -118,7 +118,7 @@
         <!-- PESTAÑA: DASHBOARD -->
         <div id="dashTab" class="tab-content">
             <h3>Reporte de Caídas</h3>
-            <p><i>Nota: El dashboard muestra los datos registrados en esta sesión. Los datos se envían a tu base de datos de Google Sheets.</i></p>
+            <p><i>Nota: El dashboard muestra los datos registrados en esta sesión. Los datos completos están en tu Google Sheets.</i></p>
             <div class="chart-container">
                 <canvas id="graficoEquipos"></canvas>
             </div>
@@ -151,8 +151,8 @@
             element.classList.add('active');
         }
 
-        // AQUÍ ESTÁ TU ENLACE GENERADO
-        const scriptURL = 'https://script.google.com/a/macros/somosgrupo-a.com/s/AKfycbyrFFPlVY0QJCGI_SZAgi5hjOnXSdT1Edokuqs_KILe4utmz0pg2yC-jOZ7tiI7Xyjd/exec';
+        // NUEVA URL ACTUALIZADA
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbyrFFPlVY0QJCGI_SZAgi5hjOnXSdT1Edokuqs_KILe4utmz0pg2yC-jOZ7tiI7Xyjd/exec';
         const form = document.forms['registroForm'];
         const submitBtn = document.getElementById('submitBtn');
         
@@ -168,13 +168,14 @@
             document.getElementById('hiddenMes').value = splitFecha[0] + "/" + splitFecha[1];
             document.getElementById('hiddenAno').value = splitFecha[0];
 
-            // Bloquear botón para evitar dobles envíos
+            // Bloquear botón para evitar envíos duplicados
             submitBtn.textContent = 'Guardando datos...';
             submitBtn.disabled = true;
 
-            // Enviar datos a Google Sheets
-            fetch(scriptURL, { method: 'POST', body: new FormData(form), mode: 'no-cors'})
+            // Enviar datos a Google Sheets usando mode: 'no-cors' para evitar bloqueos del navegador
+            fetch(scriptURL, { method: 'POST', body: new FormData(form), mode: 'no-cors' })
                 .then(response => {
+                    // Al usar no-cors la respuesta es opaca, asumimos éxito si no hay error de red
                     alert("¡Registro guardado con éxito en la Base de Datos!");
                     
                     // Actualizar el Dashboard local
@@ -195,7 +196,7 @@
                 })
                 .catch(error => {
                     console.error('Error!', error.message);
-                    alert("Hubo un error al conectar con Google Sheets.");
+                    alert("Hubo un error de red, intenta nuevamente.");
                     submitBtn.textContent = 'Guardar Registro';
                     submitBtn.disabled = false;
                 });
