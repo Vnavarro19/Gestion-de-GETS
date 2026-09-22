@@ -6,11 +6,7 @@
     <title>Dashboard - Registro de Caídas de Elementos de Corte (GET)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --primary: #0056b3;
-            --secondary: #f4f7f6;
-            --text: #333;
-        }
+        :root { --primary: #0056b3; --secondary: #f4f7f6; --text: #333; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--secondary); color: var(--text); margin: 0; padding: 0; }
         header { background-color: var(--primary); color: white; padding: 15px 20px; text-align: center; }
         .nav-tabs { display: flex; justify-content: center; background-color: #ddd; padding: 10px; }
@@ -30,6 +26,7 @@
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: var(--primary); color: white; }
+        .loading { text-align: center; font-style: italic; color: #666; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -49,46 +46,16 @@
             <h3>Registrar Nueva Caída</h3>
             <form id="registroForm" name="registroForm">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label>ID / Orden:</label>
-                        <input type="text" name="ID" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Fecha:</label>
-                        <input type="date" name="FECHA" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Equipo (Ej. 6014):</label>
-                        <input type="text" name="EQUIPO" required>
-                    </div>
-                    <div class="form-group">
-                        <label>N/C (Componente):</label>
-                        <input type="text" name="NC">
-                    </div>
-                    <div class="form-group">
-                        <label>Posición:</label>
-                        <input type="text" name="POSICION">
-                    </div>
-                    <div class="form-group">
-                        <label>Horas:</label>
-                        <input type="number" name="HORAS" placeholder="Ej. 1500">
-                    </div>
-                    <div class="form-group">
-                        <label>Referencia:</label>
-                        <input type="text" name="REFERENCIA">
-                    </div>
-                    <div class="form-group">
-                        <label>Contexto Operacional:</label>
-                        <input type="text" name="CONTEXTO_OPERACIONAL">
-                    </div>
-                    <div class="form-group">
-                        <label>Tajo / Ubicación:</label>
-                        <input type="text" name="TAJO">
-                    </div>
-                    <div class="form-group">
-                        <label>Horas Cucharón:</label>
-                        <input type="number" name="HORAS_CUCHARON">
-                    </div>
+                    <div class="form-group"><label>ID / Orden:</label><input type="text" name="ID" required></div>
+                    <div class="form-group"><label>Fecha:</label><input type="date" name="FECHA" required></div>
+                    <div class="form-group"><label>Equipo (Ej. 6014):</label><input type="text" name="EQUIPO" required></div>
+                    <div class="form-group"><label>N/C (Componente):</label><input type="text" name="NC"></div>
+                    <div class="form-group"><label>Posición:</label><input type="text" name="POSICION"></div>
+                    <div class="form-group"><label>Horas:</label><input type="number" name="HORAS"></div>
+                    <div class="form-group"><label>Referencia:</label><input type="text" name="REFERENCIA"></div>
+                    <div class="form-group"><label>Contexto Operacional:</label><input type="text" name="CONTEXTO_OPERACIONAL"></div>
+                    <div class="form-group"><label>Tajo / Ubicación:</label><input type="text" name="TAJO"></div>
+                    <div class="form-group"><label>Horas Cucharón:</label><input type="number" name="HORAS_CUCHARON"></div>
                     <div class="form-group">
                         <label>Estado:</label>
                         <select name="ESTADO">
@@ -97,19 +64,11 @@
                             <option value="EN REPARACIÓN">EN REPARACIÓN</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Foto (URL):</label>
-                        <input type="text" name="FOTO" placeholder="URL de la foto">
-                    </div>
-                    <div class="form-group" style="grid-column: 1 / -1;">
-                        <label>Comentarios:</label>
-                        <textarea name="COMENTARIOS" rows="3"></textarea>
-                    </div>
+                    <div class="form-group"><label>Foto (URL):</label><input type="text" name="FOTO"></div>
+                    <div class="form-group" style="grid-column: 1 / -1;"><label>Comentarios:</label><textarea name="COMENTARIOS" rows="3"></textarea></div>
                     
-                    <!-- Campos ocultos para Mes y Año -->
                     <input type="hidden" name="MES" id="hiddenMes">
                     <input type="hidden" name="ANO" id="hiddenAno">
-
                     <button type="submit" class="submit-btn" id="submitBtn">Guardar Registro</button>
                 </div>
             </form>
@@ -118,7 +77,10 @@
         <!-- PESTAÑA: DASHBOARD -->
         <div id="dashTab" class="tab-content">
             <h3>Reporte de Caídas</h3>
-            <p><i>Nota: El dashboard muestra los datos registrados en esta sesión. Los datos completos están en tu Google Sheets.</i></p>
+            <p><i>El dashboard se sincroniza en tiempo real con Google Sheets.</i></p>
+            
+            <div id="loadingMsg" class="loading">Cargando datos desde Google Sheets...</div>
+            
             <div class="chart-container">
                 <canvas id="graficoEquipos"></canvas>
             </div>
@@ -144,52 +106,71 @@
     </div>
 
     <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbyrFFPlVY0QJCGI_SZAgi5hjOnXSdT1Edokuqs_KILe4utmz0pg2yC-jOZ7tiI7Xyjd/exec';
+        
+        let registros = [];
+        let miGrafico = null;
+        let datosCargados = false; // Bandera para no cargar múltiples veces
+
         function showTab(tabId, element) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.nav-tabs button').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
+            
+            // Cargar datos reales al abrir la pestaña del Dashboard si no se han cargado
+            if(tabId === 'dashTab' && !datosCargados) {
+                cargarDatosDeGoogle();
+            }
         }
 
-        // NUEVA URL ACTUALIZADA
-        const scriptURL = 'https://script.google.com/macros/s/AKfycbyrFFPlVY0QJCGI_SZAgi5hjOnXSdT1Edokuqs_KILe4utmz0pg2yC-jOZ7tiI7Xyjd/exec';
+        // FUNCIÓN PARA LEER DATOS DESDE GOOGLE SHEETS
+        function cargarDatosDeGoogle() {
+            document.getElementById('loadingMsg').style.display = 'block';
+            
+            fetch(scriptURL)
+                .then(response => response.json())
+                .then(data => {
+                    // Mapear los datos de las columnas de Excel a nuestro array
+                    registros = data.map(row => ({
+                        fecha: row.FECHA, 
+                        equipo: row.EQUIPO,
+                        posicion: row.POSICION,
+                        tajo: row.TAJO,
+                        estado: row.ESTADO,
+                        mes: row.Mes || row.MES || ""
+                    })).filter(row => row.equipo !== ""); // Filtramos filas vacías
+                    
+                    datosCargados = true;
+                    document.getElementById('loadingMsg').style.display = 'none';
+                    actualizarDashboard();
+                })
+                .catch(error => {
+                    console.error('Error al cargar datos:', error);
+                    document.getElementById('loadingMsg').innerText = "Error al conectar con la base de datos.";
+                    document.getElementById('loadingMsg').style.color = "red";
+                });
+        }
+
         const form = document.forms['registroForm'];
         const submitBtn = document.getElementById('submitBtn');
-        
-        let registros = [];
-        let miGrafico = null;
 
         form.addEventListener('submit', e => {
             e.preventDefault();
             
-            // Calculamos Mes y Año antes de enviar
             const fechaVal = form['FECHA'].value;
-            const splitFecha = fechaVal.split('-'); // YYYY-MM-DD
+            const splitFecha = fechaVal.split('-'); 
             document.getElementById('hiddenMes').value = splitFecha[0] + "/" + splitFecha[1];
             document.getElementById('hiddenAno').value = splitFecha[0];
 
-            // Bloquear botón para evitar envíos duplicados
             submitBtn.textContent = 'Guardando datos...';
             submitBtn.disabled = true;
 
-            // Enviar datos a Google Sheets usando mode: 'no-cors' para evitar bloqueos del navegador
             fetch(scriptURL, { method: 'POST', body: new FormData(form), mode: 'no-cors' })
                 .then(response => {
-                    // Al usar no-cors la respuesta es opaca, asumimos éxito si no hay error de red
                     alert("¡Registro guardado con éxito en la Base de Datos!");
-                    
-                    // Actualizar el Dashboard local
-                    registros.push({
-                        fecha: form['FECHA'].value,
-                        equipo: form['EQUIPO'].value,
-                        posicion: form['POSICION'].value,
-                        tajo: form['TAJO'].value,
-                        estado: form['ESTADO'].value,
-                        mes: document.getElementById('hiddenMes').value
-                    });
-                    actualizarDashboard();
-
-                    // Limpiar formulario y restaurar botón
+                    // Reseteamos bandera para que al abrir dashboard recargue datos actualizados
+                    datosCargados = false; 
                     form.reset();
                     submitBtn.textContent = 'Guardar Registro';
                     submitBtn.disabled = false;
