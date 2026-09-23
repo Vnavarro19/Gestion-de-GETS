@@ -3,18 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Registro de Caídas de Elementos de Corte (GET)</title>
+    <title>Dashboard CHM - Registro de Caídas GET</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #0056b3; --secondary: #f4f7f6; --text: #333; }
+        :root { --primary: #00458b; --secondary: #f4f7f6; --text: #333; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--secondary); color: var(--text); margin: 0; padding: 0; }
-        header { background-color: var(--primary); color: white; padding: 15px 20px; text-align: center; }
+        
+        /* Estilos del Encabezado con Logo */
+        header { display: flex; align-items: center; justify-content: center; gap: 20px; background-color: var(--primary); color: white; padding: 15px 20px; }
+        header img { height: 60px; background: white; padding: 5px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        header h2 { margin: 0; }
+
         .nav-tabs { display: flex; justify-content: center; background-color: #ddd; padding: 10px; }
         .nav-tabs button { background-color: white; border: none; padding: 10px 20px; margin: 0 5px; cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s; }
         .nav-tabs button.active, .nav-tabs button:hover { background-color: var(--primary); color: white; }
-        .container { max-width: 1100px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .container { max-width: 1200px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        
+        /* Estilos de Formulario */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .form-group { display: flex; flex-direction: column; }
         label { font-weight: bold; margin-bottom: 5px; font-size: 0.9em;}
@@ -24,27 +31,31 @@
         button.submit-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
         
         /* Estilos de Filtros y Dashboard */
-        .filter-bar { display: flex; gap: 15px; flex-wrap: wrap; background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; align-items: center; }
-        .filter-item { display: flex; flex-direction: column; flex: 1; min-width: 150px; }
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .filter-bar { display: flex; gap: 15px; flex-wrap: wrap; background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; align-items: flex-start; }
+        .filter-item { display: flex; flex-direction: column; flex: 1; min-width: 160px; }
+        .filter-item small { font-size: 0.75em; color: #555; margin-bottom: 3px; }
+        select[multiple] { min-height: 85px; padding: 5px; }
+        
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .chart-box { background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         canvas { width: 100% !important; max-height: 300px; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: var(--primary); color: white; }
-        .loading { text-align: center; font-style: italic; color: #666; margin: 20px 0; }
+        .loading { text-align: center; font-style: italic; color: #666; margin: 20px 0; font-weight: bold;}
     </style>
 </head>
 <body>
 
     <header>
+        <img src="https://www.chmmineria.com.co/fileadmin/chmmineria/img/logo.png" alt="Logo CHM Minería">
         <h2>Gestión de Elementos de Corte (GET)</h2>
     </header>
 
     <div class="nav-tabs">
         <button class="active" onclick="showTab('formTab', this)">Nuevo Registro</button>
-        <button onclick="showTab('dashTab', this)">Dashboard</button>
+        <button onclick="showTab('dashTab', this)">Dashboard Interactivo</button>
     </div>
 
     <div class="container">
@@ -76,21 +87,24 @@
                     
                     <input type="hidden" name="MES" id="hiddenMes">
                     <input type="hidden" name="ANO" id="hiddenAno">
-                    <button type="submit" class="submit-btn" id="submitBtn">Guardar Registro</button>
+                    <button type="submit" class="submit-btn" id="submitBtn">Guardar Registro en Base de Datos</button>
                 </div>
             </form>
         </div>
 
         <!-- PESTAÑA: DASHBOARD -->
         <div id="dashTab" class="tab-content">
-            <h3>Reporte y Análisis de Caídas</h3>
-            
             <!-- Barra de Filtros -->
             <div class="filter-bar">
                 <div class="filter-item">
-                    <label>Equipo:</label>
-                    <select id="filtroEquipo" onchange="aplicarFiltros()">
-                        <option value="">Todos los Equipos</option>
+                    <label>Equipo(s):</label>
+                    <small>Ctrl+Clic para elegir varios</small>
+                    <select id="filtroEquipo" multiple onchange="aplicarFiltros()"></select>
+                </div>
+                <div class="filter-item">
+                    <label>Mes / Año:</label>
+                    <select id="filtroMes" onchange="aplicarFiltros()">
+                        <option value="">Todos los Meses</option>
                     </select>
                 </div>
                 <div class="filter-item">
@@ -100,14 +114,20 @@
                     </select>
                 </div>
                 <div class="filter-item">
-                    <label>Fecha (Exacta):</label>
-                    <select id="filtroFecha" onchange="aplicarFiltros()">
-                        <option value="">Todas las Fechas</option>
+                    <label>Estado:</label>
+                    <select id="filtroEstado" onchange="aplicarFiltros()">
+                        <option value="">Todos los Estados</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>N/C:</label>
+                    <select id="filtroNC" onchange="aplicarFiltros()">
+                        <option value="">Todos los N/C</option>
                     </select>
                 </div>
             </div>
 
-            <div id="loadingMsg" class="loading">Cargando datos desde Google Sheets...</div>
+            <div id="loadingMsg" class="loading">Sincronizando datos con Google Sheets...</div>
             
             <!-- Gráficos -->
             <div class="charts-grid">
@@ -126,6 +146,7 @@
                         <tr>
                             <th>Fecha</th>
                             <th>Equipo</th>
+                            <th>N/C</th>
                             <th>Posición</th>
                             <th>Tajo</th>
                             <th>Estado</th>
@@ -143,7 +164,7 @@
     <script>
         const scriptURL = 'https://script.google.com/macros/s/AKfycbyrFFPlVY0QJCGI_SZAgi5hjOnXSdT1Edokuqs_KILe4utmz0pg2yC-jOZ7tiI7Xyjd/exec';
         
-        let registrosTotales = []; // Todos los datos de la base
+        let registrosTotales = []; 
         let chartEquipos = null;
         let chartMeses = null;
         let datosCargados = false;
@@ -167,70 +188,84 @@
             fetch(scriptURL)
                 .then(response => response.json())
                 .then(data => {
+                    // Extraemos y mapeamos las columnas de la hoja
                     registrosTotales = data.map(row => ({
                         fecha: row.FECHA, 
                         equipo: row.EQUIPO,
+                        nc: row.NC || row["N/C"] || "", // Se asegura de leer bien la columna N/C
                         posicion: row.POSICION,
                         tajo: row.TAJO,
                         estado: row.ESTADO,
                         mes: row.Mes || row.MES || ""
-                    })).filter(row => row.equipo !== ""); // Descartar filas vacías
+                    })).filter(row => row.equipo !== ""); 
                     
                     datosCargados = true;
                     document.getElementById('loadingMsg').style.display = 'none';
                     
                     poblarSelectoresFiltros();
-                    aplicarFiltros(); // Dibuja la pantalla inicial
+                    aplicarFiltros(); 
                 })
                 .catch(error => {
                     console.error('Error al cargar datos:', error);
-                    document.getElementById('loadingMsg').innerText = "Error al conectar con la base de datos.";
+                    document.getElementById('loadingMsg').innerText = "Error al conectar con la base de datos de Google.";
                     document.getElementById('loadingMsg').style.color = "red";
                 });
         }
 
-        // LLENAR LAS LISTAS DESPLEGABLES CON LOS DATOS REALES
+        // LLENAR LAS LISTAS DESPLEGABLES CON VALORES ÚNICOS DE LA HOJA
         function poblarSelectoresFiltros() {
             const selectEq = document.getElementById('filtroEquipo');
+            const selectMes = document.getElementById('filtroMes');
             const selectPos = document.getElementById('filtroPosicion');
-            const selectFec = document.getElementById('filtroFecha');
+            const selectEst = document.getElementById('filtroEstado');
+            const selectNC = document.getElementById('filtroNC');
             
-            // Limpiar opciones previas manteniendo la opción "Todos"
-            selectEq.innerHTML = '<option value="">Todos los Equipos</option>';
+            selectEq.innerHTML = ''; // En selección múltiple no ocupamos opción "Todos" por defecto
+            selectMes.innerHTML = '<option value="">Todos los Meses</option>';
             selectPos.innerHTML = '<option value="">Todas las Posiciones</option>';
-            selectFec.innerHTML = '<option value="">Todas las Fechas</option>';
+            selectEst.innerHTML = '<option value="">Todos los Estados</option>';
+            selectNC.innerHTML = '<option value="">Todos los N/C</option>';
 
-            // Extraer valores únicos usando un Set
             const equipos = [...new Set(registrosTotales.map(r => r.equipo))].filter(Boolean).sort();
+            const meses = [...new Set(registrosTotales.map(r => r.mes))].filter(Boolean).sort();
             const posiciones = [...new Set(registrosTotales.map(r => r.posicion))].filter(Boolean).sort();
-            const fechas = [...new Set(registrosTotales.map(r => r.fecha))].filter(Boolean).sort();
+            const estados = [...new Set(registrosTotales.map(r => r.estado))].filter(Boolean).sort();
+            const ncs = [...new Set(registrosTotales.map(r => r.nc))].filter(Boolean).sort();
 
             equipos.forEach(eq => selectEq.innerHTML += `<option value="${eq}">${eq}</option>`);
+            meses.forEach(m => selectMes.innerHTML += `<option value="${m}">${m}</option>`);
             posiciones.forEach(pos => selectPos.innerHTML += `<option value="${pos}">${pos}</option>`);
-            fechas.forEach(fec => selectFec.innerHTML += `<option value="${fec}">${fec}</option>`);
+            estados.forEach(est => selectEst.innerHTML += `<option value="${est}">${est}</option>`);
+            ncs.forEach(nc => selectNC.innerHTML += `<option value="${nc}">${nc}</option>`);
         }
 
-        // APLICAR LOS FILTROS SELECCIONADOS POR EL USUARIO
+        // APLICAR TODOS LOS FILTROS SELECCIONADOS
         function aplicarFiltros() {
-            const eqVal = document.getElementById('filtroEquipo').value;
+            // Obtenemos todos los equipos seleccionados en el cuadro múltiple
+            const eqSelect = document.getElementById('filtroEquipo');
+            const eqVal = Array.from(eqSelect.selectedOptions).map(opt => opt.value);
+            
+            const mesVal = document.getElementById('filtroMes').value;
             const posVal = document.getElementById('filtroPosicion').value;
-            const fecVal = document.getElementById('filtroFecha').value;
+            const estVal = document.getElementById('filtroEstado').value;
+            const ncVal = document.getElementById('filtroNC').value;
 
-            // Filtrar el arreglo original
             const registrosFiltrados = registrosTotales.filter(reg => {
-                const matchEq = eqVal === "" || reg.equipo === eqVal;
+                // Si eqVal está vacío (no hay selección) se muestran todos
+                const matchEq = eqVal.length === 0 || eqVal.includes(reg.equipo);
+                const matchMes = mesVal === "" || reg.mes === mesVal;
                 const matchPos = posVal === "" || reg.posicion === posVal;
-                const matchFec = fecVal === "" || reg.fecha === fecVal;
-                return matchEq && matchPos && matchFec;
+                const matchEst = estVal === "" || reg.estado === estVal;
+                const matchNC = ncVal === "" || reg.nc === ncVal;
+                
+                return matchEq && matchMes && matchPos && matchEst && matchNC;
             });
 
-            // Actualizar vista con la data filtrada
             dibujarDashboard(registrosFiltrados);
         }
 
-        // DIBUJAR TABLA Y GRÁFICOS
+        // DIBUJAR TABLA Y GRÁFICOS INTERACTIVOS
         function dibujarDashboard(datos) {
-            // 1. Actualizar Tabla
             const tbody = document.querySelector("#tablaRegistros tbody");
             tbody.innerHTML = "";
             let conteoEquipos = {};
@@ -238,18 +273,14 @@
 
             datos.forEach(reg => {
                 const tr = document.createElement("tr");
-                tr.innerHTML = `<td>${reg.fecha}</td><td>${reg.equipo}</td><td>${reg.posicion}</td><td>${reg.tajo}</td><td>${reg.estado}</td><td>${reg.mes}</td>`;
+                tr.innerHTML = `<td>${reg.fecha}</td><td>${reg.equipo}</td><td>${reg.nc}</td><td>${reg.posicion}</td><td>${reg.tajo}</td><td>${reg.estado}</td><td>${reg.mes}</td>`;
                 tbody.appendChild(tr);
                 
-                // Conteo para gráficos
                 conteoEquipos[reg.equipo] = (conteoEquipos[reg.equipo] || 0) + 1;
-                
-                if(reg.mes) { // Agrupar por mes si existe
-                    conteoMeses[reg.mes] = (conteoMeses[reg.mes] || 0) + 1;
-                }
+                if(reg.mes) { conteoMeses[reg.mes] = (conteoMeses[reg.mes] || 0) + 1; }
             });
 
-            // 2. Gráfico de Barras: Equipos
+            // Gráfico: Equipos
             const ctxEq = document.getElementById('graficoEquipos').getContext('2d');
             if(chartEquipos) { chartEquipos.destroy(); } 
             
@@ -260,18 +291,13 @@
                     datasets: [{ 
                         label: 'Caídas por Equipo', 
                         data: Object.values(conteoEquipos), 
-                        backgroundColor: '#0056b3' 
+                        backgroundColor: '#00458b' 
                     }]
                 },
-                options: { 
-                    responsive: true, 
-                    plugins: { title: { display: true, text: 'Cantidad por Equipo' } },
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
-                }
+                options: { responsive: true, plugins: { title: { display: true, text: 'Cantidad por Equipo' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
-            // 3. Gráfico de Línea: Tendencia Mensual
-            // Ordenamos los meses cronológicamente (asume formato YYYY/MM)
+            // Gráfico: Tendencia Mensual
             const mesesOrdenados = Object.keys(conteoMeses).sort();
             const valoresMeses = mesesOrdenados.map(m => conteoMeses[m]);
 
@@ -285,22 +311,18 @@
                     datasets: [{ 
                         label: 'Tendencia de Caídas', 
                         data: valoresMeses, 
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                        borderColor: '#ff9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.2)',
                         fill: true,
                         tension: 0.3,
                         pointRadius: 5
                     }]
                 },
-                options: { 
-                    responsive: true, 
-                    plugins: { title: { display: true, text: 'Cantidad Mensual (Tendencia)' } },
-                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
-                }
+                options: { responsive: true, plugins: { title: { display: true, text: 'Cantidad Mensual (Tendencia)' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
         }
 
-        // GUARDAR NUEVO REGISTRO
+        // ENVÍO DE DATOS A GOOGLE SHEETS
         const form = document.forms['registroForm'];
         const submitBtn = document.getElementById('submitBtn');
 
@@ -318,15 +340,15 @@
             fetch(scriptURL, { method: 'POST', body: new FormData(form), mode: 'no-cors' })
                 .then(response => {
                     alert("¡Registro guardado con éxito en la Base de Datos!");
-                    datosCargados = false; // Forza recarga al ir al dashboard
+                    datosCargados = false; // Fuerza la recarga de la base de datos al abrir el dashboard
                     form.reset();
-                    submitBtn.textContent = 'Guardar Registro';
+                    submitBtn.textContent = 'Guardar Registro en Base de Datos';
                     submitBtn.disabled = false;
                 })
                 .catch(error => {
                     console.error('Error!', error.message);
                     alert("Hubo un error de red, intenta nuevamente.");
-                    submitBtn.textContent = 'Guardar Registro';
+                    submitBtn.textContent = 'Guardar Registro en Base de Datos';
                     submitBtn.disabled = false;
                 });
         });
