@@ -282,6 +282,20 @@
             let conteoEquipos = {};
             let conteoMeses = {};
 
+            // 1. ORDENAR LOS DATOS POR FECHA (MÁS RECIENTE PRIMERO)
+            datos.sort((a, b) => {
+                function parseFecha(f) {
+                    if(!f) return 0;
+                    if(f.includes('/')) {
+                        const [dia, mes, anio] = f.split('/');
+                        return new Date(anio, mes - 1, dia).getTime();
+                    }
+                    return new Date(f).getTime();
+                }
+                return parseFecha(b.fecha) - parseFecha(a.fecha);
+            });
+
+            // 2. CONSTRUIR LA TABLA
             datos.forEach(reg => {
                 const tr = document.createElement("tr");
                 const enlaceFoto = reg.foto && reg.foto.includes("http") ? `<a href="${reg.foto}" target="_blank">Ver Foto</a>` : "N/A";
@@ -339,11 +353,11 @@
                     document.getElementById('fileContent').value = base64Data;
                     document.getElementById('filename').value = file.name;
                     document.getElementById('mimeType').value = file.type;
-                    enviarDatos(); // Llama a la función de envío
+                    enviarDatos(); 
                 };
                 reader.readAsDataURL(file);
             } else {
-                enviarDatos(); // Si no hay foto, envía directo
+                enviarDatos(); 
             }
         });
 
@@ -351,7 +365,7 @@
             fetch(scriptURL, { method: 'POST', body: new FormData(form), mode: 'no-cors' })
                 .then(response => {
                     alert("¡Registro guardado con éxito!");
-                    window.location.reload(); // Recarga para resetear todo y traer los datos frescos
+                    window.location.reload(); 
                 })
                 .catch(error => {
                     console.error('Error!', error.message);
