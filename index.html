@@ -102,15 +102,14 @@
                     <select id="filtroEquipo" multiple onchange="aplicarFiltros()"></select>
                 </div>
                 <div class="filter-item">
+                    <label>Posición(es):</label>
+                    <small>Ctrl+Clic para elegir varias</small>
+                    <select id="filtroPosicion" multiple onchange="aplicarFiltros()"></select>
+                </div>
+                <div class="filter-item">
                     <label>Mes / Año:</label>
                     <select id="filtroMes" onchange="aplicarFiltros()">
                         <option value="">Todos los Meses</option>
-                    </select>
-                </div>
-                <div class="filter-item">
-                    <label>Posición:</label>
-                    <select id="filtroPosicion" onchange="aplicarFiltros()">
-                        <option value="">Todas las Posiciones</option>
                     </select>
                 </div>
                 <div class="filter-item">
@@ -188,11 +187,10 @@
             fetch(scriptURL)
                 .then(response => response.json())
                 .then(data => {
-                    // Extraemos y mapeamos las columnas de la hoja
                     registrosTotales = data.map(row => ({
                         fecha: row.FECHA, 
                         equipo: row.EQUIPO,
-                        nc: row.NC || row["N/C"] || "", // Se asegura de leer bien la columna N/C
+                        nc: row.NC || row["N/C"] || "", 
                         posicion: row.POSICION,
                         tajo: row.TAJO,
                         estado: row.ESTADO,
@@ -215,50 +213,50 @@
         // LLENAR LAS LISTAS DESPLEGABLES CON VALORES ÚNICOS DE LA HOJA
         function poblarSelectoresFiltros() {
             const selectEq = document.getElementById('filtroEquipo');
-            const selectMes = document.getElementById('filtroMes');
             const selectPos = document.getElementById('filtroPosicion');
+            const selectMes = document.getElementById('filtroMes');
             const selectEst = document.getElementById('filtroEstado');
             const selectNC = document.getElementById('filtroNC');
             
-            selectEq.innerHTML = ''; // En selección múltiple no ocupamos opción "Todos" por defecto
+            selectEq.innerHTML = ''; // Selección múltiple
+            selectPos.innerHTML = ''; // Selección múltiple
             selectMes.innerHTML = '<option value="">Todos los Meses</option>';
-            selectPos.innerHTML = '<option value="">Todas las Posiciones</option>';
             selectEst.innerHTML = '<option value="">Todos los Estados</option>';
             selectNC.innerHTML = '<option value="">Todos los N/C</option>';
 
             const equipos = [...new Set(registrosTotales.map(r => r.equipo))].filter(Boolean).sort();
-            const meses = [...new Set(registrosTotales.map(r => r.mes))].filter(Boolean).sort();
             const posiciones = [...new Set(registrosTotales.map(r => r.posicion))].filter(Boolean).sort();
+            const meses = [...new Set(registrosTotales.map(r => r.mes))].filter(Boolean).sort();
             const estados = [...new Set(registrosTotales.map(r => r.estado))].filter(Boolean).sort();
             const ncs = [...new Set(registrosTotales.map(r => r.nc))].filter(Boolean).sort();
 
             equipos.forEach(eq => selectEq.innerHTML += `<option value="${eq}">${eq}</option>`);
-            meses.forEach(m => selectMes.innerHTML += `<option value="${m}">${m}</option>`);
             posiciones.forEach(pos => selectPos.innerHTML += `<option value="${pos}">${pos}</option>`);
+            meses.forEach(m => selectMes.innerHTML += `<option value="${m}">${m}</option>`);
             estados.forEach(est => selectEst.innerHTML += `<option value="${est}">${est}</option>`);
             ncs.forEach(nc => selectNC.innerHTML += `<option value="${nc}">${nc}</option>`);
         }
 
         // APLICAR TODOS LOS FILTROS SELECCIONADOS
         function aplicarFiltros() {
-            // Obtenemos todos los equipos seleccionados en el cuadro múltiple
             const eqSelect = document.getElementById('filtroEquipo');
             const eqVal = Array.from(eqSelect.selectedOptions).map(opt => opt.value);
             
+            const posSelect = document.getElementById('filtroPosicion');
+            const posVal = Array.from(posSelect.selectedOptions).map(opt => opt.value);
+            
             const mesVal = document.getElementById('filtroMes').value;
-            const posVal = document.getElementById('filtroPosicion').value;
             const estVal = document.getElementById('filtroEstado').value;
             const ncVal = document.getElementById('filtroNC').value;
 
             const registrosFiltrados = registrosTotales.filter(reg => {
-                // Si eqVal está vacío (no hay selección) se muestran todos
                 const matchEq = eqVal.length === 0 || eqVal.includes(reg.equipo);
+                const matchPos = posVal.length === 0 || posVal.includes(reg.posicion);
                 const matchMes = mesVal === "" || reg.mes === mesVal;
-                const matchPos = posVal === "" || reg.posicion === posVal;
                 const matchEst = estVal === "" || reg.estado === estVal;
                 const matchNC = ncVal === "" || reg.nc === ncVal;
                 
-                return matchEq && matchMes && matchPos && matchEst && matchNC;
+                return matchEq && matchPos && matchMes && matchEst && matchNC;
             });
 
             dibujarDashboard(registrosFiltrados);
@@ -280,21 +278,26 @@
                 if(reg.mes) { conteoMeses[reg.mes] = (conteoMeses[reg.mes] || 0) + 1; }
             });
 
-            // Gráfico: Equipos
+            // Ordenar los equipos de mayor a menor cantidad de eventos
+            const equiposOrdenados = Object.entries(conteoEquipos).sort((a, b) => b[1] - a[1]);
+            const labelsEquipos = equiposOrdenados.map(e => e[0]);
+            const dataEquipos = equiposOrdenados.map(e => e[1]);
+
+            // Gráfico: Equipos (Ordenado)
             const ctxEq = document.getElementById('graficoEquipos').getContext('2d');
             if(chartEquipos) { chartEquipos.destroy(); } 
             
             chartEquipos = new Chart(ctxEq, {
                 type: 'bar',
                 data: {
-                    labels: Object.keys(conteoEquipos),
+                    labels: labelsEquipos,
                     datasets: [{ 
-                        label: 'Caídas por Equipo', 
-                        data: Object.values(conteoEquipos), 
+                        label: 'Eventos por equipo', 
+                        data: dataEquipos, 
                         backgroundColor: '#00458b' 
                     }]
                 },
-                options: { responsive: true, plugins: { title: { display: true, text: 'Cantidad por Equipo' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                options: { responsive: true, plugins: { title: { display: true, text: 'Eventos por Equipo' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
 
             // Gráfico: Tendencia Mensual
@@ -309,7 +312,7 @@
                 data: {
                     labels: mesesOrdenados,
                     datasets: [{ 
-                        label: 'Tendencia de Caídas', 
+                        label: 'Tendencia de eventos', 
                         data: valoresMeses, 
                         borderColor: '#ff9800',
                         backgroundColor: 'rgba(255, 152, 0, 0.2)',
@@ -318,7 +321,7 @@
                         pointRadius: 5
                     }]
                 },
-                options: { responsive: true, plugins: { title: { display: true, text: 'Cantidad Mensual (Tendencia)' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                options: { responsive: true, plugins: { title: { display: true, text: 'Tendencia de eventos (Mensual)' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
             });
         }
 
