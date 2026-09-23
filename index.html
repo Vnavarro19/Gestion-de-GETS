@@ -12,7 +12,7 @@
         .nav-tabs { display: flex; justify-content: center; background-color: #ddd; padding: 10px; }
         .nav-tabs button { background-color: white; border: none; padding: 10px 20px; margin: 0 5px; cursor: pointer; font-weight: bold; border-radius: 5px; transition: 0.3s; }
         .nav-tabs button.active, .nav-tabs button:hover { background-color: var(--primary); color: white; }
-        .container { max-width: 1000px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .container { max-width: 1100px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
@@ -22,8 +22,15 @@
         button.submit-btn { grid-column: 1 / -1; background-color: #28a745; color: white; padding: 12px; border: none; border-radius: 5px; font-size: 1.1em; cursor: pointer; margin-top: 10px; }
         button.submit-btn:hover { background-color: #218838; }
         button.submit-btn:disabled { background-color: #6c757d; cursor: not-allowed; }
-        .chart-container { width: 100%; max-width: 600px; margin: 0 auto 30px auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        
+        /* Estilos de Filtros y Dashboard */
+        .filter-bar { display: flex; gap: 15px; flex-wrap: wrap; background: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; align-items: center; }
+        .filter-item { display: flex; flex-direction: column; flex: 1; min-width: 150px; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .chart-box { background: white; padding: 15px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        canvas { width: 100% !important; max-height: 300px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: var(--primary); color: white; }
         .loading { text-align: center; font-style: italic; color: #666; margin: 20px 0; }
@@ -76,15 +83,43 @@
 
         <!-- PESTAÑA: DASHBOARD -->
         <div id="dashTab" class="tab-content">
-            <h3>Reporte de Caídas</h3>
-            <p><i>El dashboard se sincroniza en tiempo real con Google Sheets.</i></p>
+            <h3>Reporte y Análisis de Caídas</h3>
             
+            <!-- Barra de Filtros -->
+            <div class="filter-bar">
+                <div class="filter-item">
+                    <label>Equipo:</label>
+                    <select id="filtroEquipo" onchange="aplicarFiltros()">
+                        <option value="">Todos los Equipos</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>Posición:</label>
+                    <select id="filtroPosicion" onchange="aplicarFiltros()">
+                        <option value="">Todas las Posiciones</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>Fecha (Exacta):</label>
+                    <select id="filtroFecha" onchange="aplicarFiltros()">
+                        <option value="">Todas las Fechas</option>
+                    </select>
+                </div>
+            </div>
+
             <div id="loadingMsg" class="loading">Cargando datos desde Google Sheets...</div>
             
-            <div class="chart-container">
-                <canvas id="graficoEquipos"></canvas>
+            <!-- Gráficos -->
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <canvas id="graficoEquipos"></canvas>
+                </div>
+                <div class="chart-box">
+                    <canvas id="graficoMeses"></canvas>
+                </div>
             </div>
             
+            <!-- Tabla -->
             <div style="overflow-x:auto;">
                 <table id="tablaRegistros">
                     <thead>
@@ -108,42 +143,44 @@
     <script>
         const scriptURL = 'https://script.google.com/macros/s/AKfycbyrFFPlVY0QJCGI_SZAgi5hjOnXSdT1Edokuqs_KILe4utmz0pg2yC-jOZ7tiI7Xyjd/exec';
         
-        let registros = [];
-        let miGrafico = null;
-        let datosCargados = false; // Bandera para no cargar múltiples veces
+        let registrosTotales = []; // Todos los datos de la base
+        let chartEquipos = null;
+        let chartMeses = null;
+        let datosCargados = false;
 
+        // Gestión de pestañas
         function showTab(tabId, element) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
             document.querySelectorAll('.nav-tabs button').forEach(btn => btn.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             element.classList.add('active');
             
-            // Cargar datos reales al abrir la pestaña del Dashboard si no se han cargado
             if(tabId === 'dashTab' && !datosCargados) {
                 cargarDatosDeGoogle();
             }
         }
 
-        // FUNCIÓN PARA LEER DATOS DESDE GOOGLE SHEETS
+        // LECTURA DE GOOGLE SHEETS
         function cargarDatosDeGoogle() {
             document.getElementById('loadingMsg').style.display = 'block';
             
             fetch(scriptURL)
                 .then(response => response.json())
                 .then(data => {
-                    // Mapear los datos de las columnas de Excel a nuestro array
-                    registros = data.map(row => ({
+                    registrosTotales = data.map(row => ({
                         fecha: row.FECHA, 
                         equipo: row.EQUIPO,
                         posicion: row.POSICION,
                         tajo: row.TAJO,
                         estado: row.ESTADO,
                         mes: row.Mes || row.MES || ""
-                    })).filter(row => row.equipo !== ""); // Filtramos filas vacías
+                    })).filter(row => row.equipo !== ""); // Descartar filas vacías
                     
                     datosCargados = true;
                     document.getElementById('loadingMsg').style.display = 'none';
-                    actualizarDashboard();
+                    
+                    poblarSelectoresFiltros();
+                    aplicarFiltros(); // Dibuja la pantalla inicial
                 })
                 .catch(error => {
                     console.error('Error al cargar datos:', error);
@@ -152,6 +189,118 @@
                 });
         }
 
+        // LLENAR LAS LISTAS DESPLEGABLES CON LOS DATOS REALES
+        function poblarSelectoresFiltros() {
+            const selectEq = document.getElementById('filtroEquipo');
+            const selectPos = document.getElementById('filtroPosicion');
+            const selectFec = document.getElementById('filtroFecha');
+            
+            // Limpiar opciones previas manteniendo la opción "Todos"
+            selectEq.innerHTML = '<option value="">Todos los Equipos</option>';
+            selectPos.innerHTML = '<option value="">Todas las Posiciones</option>';
+            selectFec.innerHTML = '<option value="">Todas las Fechas</option>';
+
+            // Extraer valores únicos usando un Set
+            const equipos = [...new Set(registrosTotales.map(r => r.equipo))].filter(Boolean).sort();
+            const posiciones = [...new Set(registrosTotales.map(r => r.posicion))].filter(Boolean).sort();
+            const fechas = [...new Set(registrosTotales.map(r => r.fecha))].filter(Boolean).sort();
+
+            equipos.forEach(eq => selectEq.innerHTML += `<option value="${eq}">${eq}</option>`);
+            posiciones.forEach(pos => selectPos.innerHTML += `<option value="${pos}">${pos}</option>`);
+            fechas.forEach(fec => selectFec.innerHTML += `<option value="${fec}">${fec}</option>`);
+        }
+
+        // APLICAR LOS FILTROS SELECCIONADOS POR EL USUARIO
+        function aplicarFiltros() {
+            const eqVal = document.getElementById('filtroEquipo').value;
+            const posVal = document.getElementById('filtroPosicion').value;
+            const fecVal = document.getElementById('filtroFecha').value;
+
+            // Filtrar el arreglo original
+            const registrosFiltrados = registrosTotales.filter(reg => {
+                const matchEq = eqVal === "" || reg.equipo === eqVal;
+                const matchPos = posVal === "" || reg.posicion === posVal;
+                const matchFec = fecVal === "" || reg.fecha === fecVal;
+                return matchEq && matchPos && matchFec;
+            });
+
+            // Actualizar vista con la data filtrada
+            dibujarDashboard(registrosFiltrados);
+        }
+
+        // DIBUJAR TABLA Y GRÁFICOS
+        function dibujarDashboard(datos) {
+            // 1. Actualizar Tabla
+            const tbody = document.querySelector("#tablaRegistros tbody");
+            tbody.innerHTML = "";
+            let conteoEquipos = {};
+            let conteoMeses = {};
+
+            datos.forEach(reg => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `<td>${reg.fecha}</td><td>${reg.equipo}</td><td>${reg.posicion}</td><td>${reg.tajo}</td><td>${reg.estado}</td><td>${reg.mes}</td>`;
+                tbody.appendChild(tr);
+                
+                // Conteo para gráficos
+                conteoEquipos[reg.equipo] = (conteoEquipos[reg.equipo] || 0) + 1;
+                
+                if(reg.mes) { // Agrupar por mes si existe
+                    conteoMeses[reg.mes] = (conteoMeses[reg.mes] || 0) + 1;
+                }
+            });
+
+            // 2. Gráfico de Barras: Equipos
+            const ctxEq = document.getElementById('graficoEquipos').getContext('2d');
+            if(chartEquipos) { chartEquipos.destroy(); } 
+            
+            chartEquipos = new Chart(ctxEq, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(conteoEquipos),
+                    datasets: [{ 
+                        label: 'Caídas por Equipo', 
+                        data: Object.values(conteoEquipos), 
+                        backgroundColor: '#0056b3' 
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    plugins: { title: { display: true, text: 'Cantidad por Equipo' } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
+                }
+            });
+
+            // 3. Gráfico de Línea: Tendencia Mensual
+            // Ordenamos los meses cronológicamente (asume formato YYYY/MM)
+            const mesesOrdenados = Object.keys(conteoMeses).sort();
+            const valoresMeses = mesesOrdenados.map(m => conteoMeses[m]);
+
+            const ctxMes = document.getElementById('graficoMeses').getContext('2d');
+            if(chartMeses) { chartMeses.destroy(); } 
+
+            chartMeses = new Chart(ctxMes, {
+                type: 'line',
+                data: {
+                    labels: mesesOrdenados,
+                    datasets: [{ 
+                        label: 'Tendencia de Caídas', 
+                        data: valoresMeses, 
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 5
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    plugins: { title: { display: true, text: 'Cantidad Mensual (Tendencia)' } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } 
+                }
+            });
+        }
+
+        // GUARDAR NUEVO REGISTRO
         const form = document.forms['registroForm'];
         const submitBtn = document.getElementById('submitBtn');
 
@@ -169,8 +318,7 @@
             fetch(scriptURL, { method: 'POST', body: new FormData(form), mode: 'no-cors' })
                 .then(response => {
                     alert("¡Registro guardado con éxito en la Base de Datos!");
-                    // Reseteamos bandera para que al abrir dashboard recargue datos actualizados
-                    datosCargados = false; 
+                    datosCargados = false; // Forza recarga al ir al dashboard
                     form.reset();
                     submitBtn.textContent = 'Guardar Registro';
                     submitBtn.disabled = false;
@@ -182,31 +330,6 @@
                     submitBtn.disabled = false;
                 });
         });
-
-        function actualizarDashboard() {
-            const tbody = document.querySelector("#tablaRegistros tbody");
-            tbody.innerHTML = "";
-            let conteoEquipos = {};
-
-            registros.forEach(reg => {
-                const tr = document.createElement("tr");
-                tr.innerHTML = `<td>${reg.fecha}</td><td>${reg.equipo}</td><td>${reg.posicion}</td><td>${reg.tajo}</td><td>${reg.estado}</td><td>${reg.mes}</td>`;
-                tbody.appendChild(tr);
-                conteoEquipos[reg.equipo] = (conteoEquipos[reg.equipo] || 0) + 1;
-            });
-
-            const ctx = document.getElementById('graficoEquipos').getContext('2d');
-            if(miGrafico) { miGrafico.destroy(); } 
-
-            miGrafico = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(conteoEquipos),
-                    datasets: [{ label: 'Número de Caídas por Equipo', data: Object.values(conteoEquipos), backgroundColor: '#0056b3' }]
-                },
-                options: { responsive: true, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
-            });
-        }
     </script>
 </body>
 </html>
